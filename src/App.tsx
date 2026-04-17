@@ -32,6 +32,7 @@ import StampCardDesignEditor from "./pages/StampCardDesignEditor";
 import AssignStampLoyalty from "./pages/AssignStampLoyalty";
 import LoyaltyProgramList from "./pages/LoyaltyProgramList";
 import CreateLoyaltyProgram from "./pages/CreateLoyaltyProgram";
+import SubscriberList from "./pages/SubscriberList";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,9 @@ const App = () => (
             <Route path="/account/user-list/new" element={<ProtectedRoute requiredPermission="users:manage"><AddUser /></ProtectedRoute>} />
             <Route path="/account/user-list/:id" element={<ProtectedRoute requiredPermission="users:view"><UserDetails /></ProtectedRoute>} />
             <Route path="/account/user-list/:id/edit" element={<ProtectedRoute requiredPermission="users:manage"><EditUser /></ProtectedRoute>} />
+
+            {/* Membership — Subscribers */}
+            <Route path="/membership/subscribers" element={<ProtectedRoute><SubscriberList /></ProtectedRoute>} />
 
             {/* Membership Card Management */}
             <Route path="/cards/settings" element={<ProtectedRoute requiredPermission="cards:view"><MembershipCardList /></ProtectedRoute>} />

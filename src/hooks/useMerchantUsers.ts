@@ -21,12 +21,11 @@ export async function uploadMerchantAvatar(file: File, userId: string): Promise<
 }
 
 async function hashPassword(password: string): Promise<string> {
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const res = await supabase.functions.invoke("hash-password", {
-    body: { password },
-  });
-  if (res.error) throw new Error("Failed to hash password");
-  return res.data.hash;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function useMerchantUsers() {

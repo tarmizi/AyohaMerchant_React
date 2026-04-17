@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import FormField from "@/components/auth/FormField";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -129,12 +129,11 @@ const Login: React.FC = () => {
             variant="outline"
             className="w-full h-12 font-medium text-[15px] border-border hover:bg-secondary gap-2"
             onClick={async () => {
-              const result = await lovable.auth.signInWithOAuth("google", {
-                redirect_uri: window.location.origin + "/login",
+              const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: { redirectTo: window.location.origin + "/login" },
               });
-              if (result.error) {
-                toast.error("Google sign-in failed. Please try again.");
-              }
+              if (error) toast.error("Google sign-in failed. Please try again.");
             }}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -151,12 +150,11 @@ const Login: React.FC = () => {
             variant="outline"
             className="w-full h-12 font-medium text-[15px] border-border hover:bg-secondary gap-2"
             onClick={async () => {
-              const result = await lovable.auth.signInWithOAuth("apple", {
-                redirect_uri: window.location.origin + "/login",
+              const { error } = await supabase.auth.signInWithOAuth({
+                provider: "apple",
+                options: { redirectTo: window.location.origin + "/login" },
               });
-              if (result.error) {
-                toast.error("Apple sign-in failed. Please try again.");
-              }
+              if (error) toast.error("Apple sign-in failed. Please try again.");
             }}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
