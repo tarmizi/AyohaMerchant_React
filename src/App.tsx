@@ -33,6 +33,8 @@ import AssignStampLoyalty from "./pages/AssignStampLoyalty";
 import LoyaltyProgramList from "./pages/LoyaltyProgramList";
 import CreateLoyaltyProgram from "./pages/CreateLoyaltyProgram";
 import SubscriberList from "./pages/SubscriberList";
+import SubscriberDetails from "./pages/SubscriberDetails";
+import StampCardDetail from "./pages/StampCardDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +76,8 @@ const App = () => (
 
             {/* Membership — Subscribers */}
             <Route path="/membership/subscribers" element={<ProtectedRoute><SubscriberList /></ProtectedRoute>} />
+            <Route path="/membership/subscribers/:id" element={<ProtectedRoute><SubscriberDetails /></ProtectedRoute>} />
+            <Route path="/membership/subscribers/:memberId/stamp/:programId" element={<ProtectedRoute><StampCardDetail /></ProtectedRoute>} />
 
             {/* Membership Card Management */}
             <Route path="/cards/settings" element={<ProtectedRoute requiredPermission="cards:view"><MembershipCardList /></ProtectedRoute>} />

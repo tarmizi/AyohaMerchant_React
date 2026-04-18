@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ const getInitials = (name: string | null) => {
 };
 
 const SubscriberList: React.FC = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const { data: subscribers = [], isLoading, isError } = useSubscriberList();
 
@@ -119,7 +121,8 @@ const SubscriberList: React.FC = () => {
                   return (
                     <div
                       key={s.id}
-                      className="flex flex-col lg:grid lg:grid-cols-[2fr_2fr_1.5fr_1.5fr_1fr_1fr_1fr_1fr_auto] items-start lg:items-center gap-3 lg:gap-4 px-5 py-4 hover:bg-muted/30 transition-colors"
+                      className="flex flex-col lg:grid lg:grid-cols-[2fr_2fr_1.5fr_1.5fr_1fr_1fr_1fr_1fr_auto] items-start lg:items-center gap-3 lg:gap-4 px-5 py-4 hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/membership/subscribers/${s.id}`)}
                     >
                       {/* Avatar + Full Name */}
                       <div className="flex items-center gap-3 min-w-0">
