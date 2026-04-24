@@ -37,6 +37,7 @@ const EnterpriseInfo: React.FC = () => {
       const { data, error } = await supabase
         .from("enterprises")
         .select("*")
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

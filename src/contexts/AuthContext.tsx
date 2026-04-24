@@ -156,6 +156,30 @@ async function fetchMerchantRole(userId: string): Promise<MerchantRole> {
   }
 }
 
+async function ensureMerchantProfile(su: SupabaseUser): Promise<void> {
+  try {
+    await (supabase as any)
+      .from("merchant_profiles")
+      .insert({
+        auth_user_id: su.id,
+        full_name:
+          su.user_metadata?.full_name ??
+          su.user_metadata?.name ??
+          su.email?.split("@")[0] ??
+          null,
+        email: su.email ?? null,
+        phone_no: su.user_metadata?.phone ?? null,
+        profile_image_url: su.user_metadata?.avatar_url ?? null,
+        status: "active",
+      })
+      .select()
+      .limit(1);
+    // Silently ignored if auth_user_id already exists (unique index)
+  } catch {
+    // non-critical — do not block auth flow
+  }
+}
+
 function mapSupabaseUser(su: SupabaseUser, role: MerchantRole): User {
   return {
     id: su.id,
@@ -178,8 +202,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
+        if (event === "SIGNED_IN") {
+          ensureMerchantProfile(session.user);
+        }
         loadUserWithRole(session.user).finally(() => setIsLoading(false));
       } else {
         setUser(null);

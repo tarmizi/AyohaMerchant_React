@@ -97,4 +97,47 @@ Free tier defaults: 1 membership card, 1 loyalty program per merchant.
 /cards/*                                             → cards:* / programs:*
 /campaigns/loyalty-programs/*                        → programs:*
 /campaigns/stamp-loyalty/*                           → campaigns:* / programs:*
+/membership/subscribers/:memberId/stamp/:programId   → StampCardDetail page
 ```
+
+## Stamp Card Module (completed 2026-04-18)
+
+### Status: Complete
+Full stamp card member detail page with stamp/cancel/perks functionality.
+
+### Files
+- `src/pages/StampCardDetail.tsx` — main page: 3-col layout (card viewer | stamp button | transaction log), `PerksModal`, `ConfirmDialog` (stamp + cancel variants)
+- `src/components/stampcard-editor/StampCardViewer.tsx` — standalone viewer (NOT the design editor's preview), 3-col grid, `minHeight: 580`, subscriber-aware stamped slot rendering
+- `src/hooks/useStampCardDetail.ts` — multi-step fetch: membership → stamp program → stampcard design → stampcard_slots → subscriber slots
+- `src/hooks/useStampNow.ts` — mutation: finds smallest `slot_no` where `stamped_status='N'`, updates to `'Y'`
+- `src/pages/SubscriberDetails.tsx` — removed "View Card" and "Approval" buttons; stamp privilege navigates to StampCardDetail
+- `src/App.tsx` — added route for StampCardDetail
+
+### Database Tables
+| Table | Usage |
+|---|---|
+| `loyalty_program_stamp_subscriber` | Per-member slot stamp state (`stamped_status='Y'/'N'`, `is_redeem_item`, `customer_auth_user_id`, `merchant_account_id`) |
+| `loyalty_program_stampcard` | Card design (colors, images, labels) — not in `types.ts`, use `as any` |
+| `loyalty_program_stampcard_slots` | Slot design configs (perk images, titles) — not in `types.ts`, use `as any` |
+| `loyalty_program_stamp` | Stamp program (rules, descriptions) |
+| `merchant_memberships` | Member lookup — `customer_profile_id` = `customer_auth_user_id` in subscriber table |
+
+### Key Implementation Notes
+- `stamped_status` DB values: `"Y"` (stamped) and `"N"` (not stamped) — NOT `"stamped"/"empty"`
+- `customer_auth_user_id` in subscriber table = `merchant_memberships.customer_profile_id`
+- `redeemableSlotNos` = subscriber rows where `is_redeem_item?.toUpperCase() === 'Y'` — only these trigger PerksModal on click
+- Cancel stamp: sets `stamped_status='N'`, nulls `stamped_date/by/method`
+- Stamp card layout: `minHeight: 580` (not fixed `aspectRatio`), natural flex height
+
+### RLS Policies (apply manually in Supabase Dashboard)
+```sql
+-- loyalty_program_stamp_subscriber SELECT + UPDATE
+-- See: supabase/migrations/20260418000002_stamp_subscriber_read_policy.sql
+
+-- membership_card_loyalty_programs SELECT
+-- See: supabase/migrations/20260418000001_merchant_card_loyalty_programs_policy.sql
+```
+
+### Next Tasks
+1. **Reset stamp card button** — reset ALL slots for a member back to `stamped_status='N'` (bulk update on `loyalty_program_stamp_subscriber` where `loyalty_program_stampcard_id` + `customer_auth_user_id`)
+2. **Perks modal polish** — current implementation functional; may need additional fields or design refinements

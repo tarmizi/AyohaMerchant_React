@@ -38,6 +38,7 @@ const StampLoyaltyList: React.FC = () => {
       const { data, error } = await supabase
         .from("loyalty_program_stamp")
         .select("*")
+        .eq("merchant_account_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as any[];

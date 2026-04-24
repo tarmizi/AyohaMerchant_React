@@ -51,7 +51,10 @@ export interface StampCardDetailData {
     reward_box_label: string | null;
   } | null;
   design: StampCardDesign | null;
-  subscriberSlots: StampSubscriberSlot[];
+  subscriberSlots: StampSubscriberSlot[];   // max-batch slots (default view)
+  allSubscriberSlots: StampSubscriberSlot[]; // all batches — for batch filter
+  availableBatches: number[];               // sorted desc
+  maxBatch: number;
   subscriberAccno: string;
   stampedCount: number;
   logEntries: StampSubscriberSlot[];
@@ -66,14 +69,14 @@ export function useStampCardDetail(
     queryFn: async (): Promise<StampCardDetailData> => {
       if (!membershipId || !programId) throw new Error("Missing IDs");
 
-      // Step 1: fetch membership — get customer_profile_id (= customer_auth_user_id)
+      // Step 1: fetch membership
       const { data: membership, error: mErr } = await supabase
         .from("merchant_memberships" as any)
         .select("id, membership_no, merchant_id, customer_profile_id")
         .eq("id", membershipId)
         .single();
       if (mErr) throw mErr;
-      const subscriberAccno: string   = (membership as any).membership_no ?? "";
+      const subscriberAccno: string    = (membership as any).membership_no ?? "";
       const customerAuthUserId: string = (membership as any).customer_profile_id ?? "";
 
       // Step 2: fetch stamp program
@@ -110,7 +113,6 @@ export function useStampCardDetail(
           reward_value_text: s.reward_value_text ?? "",
         }));
 
-        // fill in missing slots
         const total = stampcard.total_stamp_slots ?? 11;
         for (let i = 1; i <= total; i++) {
           if (!slotConfigs.find((s) => s.slot_no === i)) {
@@ -148,31 +150,41 @@ export function useStampCardDetail(
           }
         : null;
 
-      // Step 6: fetch subscriber slots filtered by stampcard_id + customer_auth_user_id
-      let subscriberSlots: StampSubscriberSlot[] = [];
+      // Step 6: fetch ALL subscriber slots across all batches
+      let allSubscriberSlots: StampSubscriberSlot[] = [];
       if (stampcard?.id && customerAuthUserId) {
-        const { data: subSlots } = await supabase
+        const { data: allSlots } = await supabase
           .from("loyalty_program_stamp_subscriber")
           .select("id, slot_no, slot_type, stamped_status, stamped_date, stamped_by, stamped_method, batch, is_redeem_item, perk_title, perk_image_url, reward_value_text, slot_label")
           .eq("loyalty_program_stampcard_id", stampcard.id)
           .eq("customer_auth_user_id", customerAuthUserId)
+          .order("batch", { ascending: false })
           .order("slot_no", { ascending: true });
 
-        subscriberSlots = ((subSlots as any[]) ?? []) as StampSubscriberSlot[];
+        allSubscriberSlots = ((allSlots as any[]) ?? []) as StampSubscriberSlot[];
 
         // fallback: try subscriber_accno if no results
-        if (subscriberSlots.length === 0 && subscriberAccno) {
+        if (allSubscriberSlots.length === 0 && subscriberAccno) {
           const { data: fallbackSlots } = await supabase
             .from("loyalty_program_stamp_subscriber")
             .select("id, slot_no, slot_type, stamped_status, stamped_date, stamped_by, stamped_method, batch, is_redeem_item, perk_title, perk_image_url, reward_value_text, slot_label")
             .eq("loyalty_program_stampcard_id", stampcard.id)
             .eq("subscriber_accno", subscriberAccno)
+            .order("batch", { ascending: false })
             .order("slot_no", { ascending: true });
-          subscriberSlots = ((fallbackSlots as any[]) ?? []) as StampSubscriberSlot[];
+          allSubscriberSlots = ((fallbackSlots as any[]) ?? []) as StampSubscriberSlot[];
         }
       }
 
-      const stampedSlots = subscriberSlots.filter((s) => {
+      // Derive available batches (desc) and max batch
+      const availableBatches = [...new Set(allSubscriberSlots.map((s) => s.batch))]
+        .sort((a, b) => b - a);
+      const maxBatch = availableBatches[0] ?? 1;
+
+      // Default view: max batch only
+      const subscriberSlots = allSubscriberSlots.filter((s) => s.batch === maxBatch);
+
+      const stampedSlots   = subscriberSlots.filter((s) => {
         const v = s.stamped_status?.toUpperCase();
         return v === "Y" || v === "STAMPED";
       });
@@ -188,6 +200,9 @@ export function useStampCardDetail(
         stampcard,
         design,
         subscriberSlots,
+        allSubscriberSlots,
+        availableBatches,
+        maxBatch,
         stampedSlotNos,
         subscriberAccno,
         customerAuthUserId,

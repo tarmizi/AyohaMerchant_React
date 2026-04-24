@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ShieldAlert } from "lucide-react";
 
 const LEVELS = ["Bronze", "Silver", "Gold", "Platinum", "Elite"];
-const CYCLES = ["Monthly", "Quarterly", "Yearly", "One-Time"];
+const CYCLES = ["Monthly", "Quarterly", "Yearly", "One-Time", "Free Of Charge (FOC)"];
 
 const AddMembershipCard: React.FC = () => {
   const navigate = useNavigate();

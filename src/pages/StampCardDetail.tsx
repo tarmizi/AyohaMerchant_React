@@ -5,13 +5,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import StampCardViewer from "@/components/stampcard-editor/StampCardViewer";
 import { useStampCardDetail } from "@/hooks/useStampCardDetail";
 import { useStampNow } from "@/hooks/useStampNow";
+import { useResetStampCard } from "@/hooks/useResetStampCard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SlotClickInfo } from "@/components/stampcard-editor/StampCardViewer";
 import {
   ChevronRight, Stamp, Clock, User2, QrCode, Zap,
-  CheckCircle2, AlertTriangle, X, ShieldCheck, Sparkles,
+  CheckCircle2, AlertTriangle, X, ShieldCheck, Sparkles, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,7 +34,7 @@ const METHOD_ICON: Record<string, React.ElementType> = {
 
 interface ConfirmDialogProps {
   open: boolean;
-  variant: "stamp" | "cancel";
+  variant: "stamp" | "cancel" | "reset";
   slotNo?: number;
   onConfirm: () => void;
   onClose: () => void;
@@ -43,69 +44,71 @@ function ConfirmDialog({ open, variant, slotNo, onConfirm, onClose }: ConfirmDia
   if (!open) return null;
 
   const isStamp = variant === "stamp";
+  const isReset = variant === "reset";
+
+  const accentBar = isStamp
+    ? "bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500"
+    : isReset
+      ? "bg-gradient-to-r from-amber-400 via-orange-500 to-yellow-400"
+      : "bg-gradient-to-r from-red-400 via-rose-500 to-orange-400";
+
+  const iconBg = isStamp
+    ? "bg-gradient-to-br from-violet-100 to-fuchsia-100"
+    : isReset
+      ? "bg-gradient-to-br from-amber-50 to-orange-100"
+      : "bg-gradient-to-br from-red-50 to-rose-100";
+
+  const noteBg = isStamp
+    ? "bg-violet-50 text-violet-700"
+    : isReset
+      ? "bg-amber-50 text-amber-700"
+      : "bg-rose-50 text-rose-700";
+
+  const confirmBtn = isStamp
+    ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-md shadow-fuchsia-200"
+    : isReset
+      ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 shadow-md shadow-orange-200"
+      : "bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-400 hover:to-red-400 shadow-md shadow-rose-200";
+
+  const title = isStamp ? "Confirm Stamp" : isReset ? "Reset Stamp Card" : `Cancel Stamp — Slot #${slotNo}`;
+  const body  = isStamp
+    ? "You are about to issue a stamp to this member on the next available slot. This action will be recorded in the transaction log."
+    : isReset
+      ? "This will start a new batch for this member. Fresh unstamped slots will be created from the card design. Previous transaction history is preserved."
+      : `You are about to cancel the stamp on Slot #${slotNo}. The slot will be marked as unstamped and this action will be logged.`;
+  const note  = isStamp
+    ? "Make sure the member meets the stamp eligibility requirement before proceeding."
+    : isReset
+      ? "A new batch cycle will begin. The member can collect stamps again from Slot #1."
+      : "Cancelling a stamp cannot be undone automatically. Use this only to correct errors.";
+  const confirmLabel = isStamp ? "Yes, Stamp Now" : isReset ? "Yes, Reset Card" : "Yes, Cancel Stamp";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* dialog */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* top accent bar */}
-        <div
-          className={`h-1.5 w-full ${
-            isStamp
-              ? "bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500"
-              : "bg-gradient-to-r from-red-400 via-rose-500 to-orange-400"
-          }`}
-        />
+        <div className={`h-1.5 w-full ${accentBar}`} />
 
         <div className="p-6">
-          {/* icon */}
-          <div
-            className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${
-              isStamp
-                ? "bg-gradient-to-br from-violet-100 to-fuchsia-100"
-                : "bg-gradient-to-br from-red-50 to-rose-100"
-            }`}
-          >
+          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${iconBg}`}>
             {isStamp ? (
               <ShieldCheck className="h-7 w-7 text-fuchsia-600" />
+            ) : isReset ? (
+              <RotateCcw className="h-7 w-7 text-orange-500" />
             ) : (
               <AlertTriangle className="h-7 w-7 text-rose-500" />
             )}
           </div>
 
-          {/* title */}
-          <h3 className="text-base font-bold text-gray-900 mb-1">
-            {isStamp ? "Confirm Stamp" : `Cancel Stamp — Slot #${slotNo}`}
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">
-            {isStamp
-              ? "You are about to issue a stamp to this member on the next available slot. This action will be recorded in the transaction log."
-              : `You are about to cancel the stamp on Slot #${slotNo}. The slot will be marked as unstamped and this action will be logged.`}
-          </p>
+          <h3 className="text-base font-bold text-gray-900 mb-1">{title}</h3>
+          <p className="text-sm text-gray-500 leading-relaxed">{body}</p>
 
-          {/* warning note */}
-          <div
-            className={`mt-4 px-3 py-2 rounded-xl text-xs flex items-start gap-2 ${
-              isStamp
-                ? "bg-violet-50 text-violet-700"
-                : "bg-rose-50 text-rose-700"
-            }`}
-          >
+          <div className={`mt-4 px-3 py-2 rounded-xl text-xs flex items-start gap-2 ${noteBg}`}>
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>
-              {isStamp
-                ? "Make sure the member meets the stamp eligibility requirement before proceeding."
-                : "Cancelling a stamp cannot be undone automatically. Use this only to correct errors."}
-            </span>
+            <span>{note}</span>
           </div>
 
-          {/* buttons */}
           <div className="flex gap-3 mt-5">
             <button
               onClick={onClose}
@@ -115,18 +118,13 @@ function ConfirmDialog({ open, variant, slotNo, onConfirm, onClose }: ConfirmDia
             </button>
             <button
               onClick={() => { onConfirm(); onClose(); }}
-              className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95 ${
-                isStamp
-                  ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-md shadow-fuchsia-200"
-                  : "bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-400 hover:to-red-400 shadow-md shadow-rose-200"
-              }`}
+              className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95 ${confirmBtn}`}
             >
-              {isStamp ? "Yes, Stamp Now" : "Yes, Cancel Stamp"}
+              {confirmLabel}
             </button>
           </div>
         </div>
 
-        {/* close X */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 h-7 w-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
@@ -253,9 +251,17 @@ const StampCardDetail: React.FC = () => {
   const [showStampConfirm, setShowStampConfirm]   = useState(false);
   const [cancelTarget, setCancelTarget]           = useState<{ id: string; slotNo: number } | null>(null);
   const [activePerk, setActivePerk]               = useState<PerkInfo | null>(null);
+  const [showResetConfirm, setShowResetConfirm]   = useState(false);
+  const [selectedBatch, setSelectedBatch]         = useState<number | null>(null);
 
   const { data, isLoading, isError } = useStampCardDetail(memberId, programId);
-  const stampNow = useStampNow();
+  const stampNow    = useStampNow();
+  const resetCard   = useResetStampCard();
+
+  // When data refreshes (e.g. after reset), snap back to the latest batch
+  React.useEffect(() => {
+    if (data) setSelectedBatch(null);
+  }, [data?.maxBatch]);
 
   // Cancel stamp mutation
   const cancelStamp = useMutation({
@@ -290,12 +296,29 @@ const StampCardDetail: React.FC = () => {
     );
   }
 
-  const { program, design, stampedSlotNos, stampedCount, logEntries, subscriberSlots } = data;
-  const totalSlots         = design?.total_stamp_slots ?? 11;
-  const allStamped         = stampedCount >= totalSlots;
-  const progressPct        = totalSlots > 0 ? Math.round((stampedCount / totalSlots) * 100) : 0;
+  const { program, design, allSubscriberSlots, availableBatches, maxBatch } = data;
   const stampcardId        = data.stampcard?.id ?? "";
   const customerAuthUserId = data.customerAuthUserId;
+  const totalSlots         = design?.total_stamp_slots ?? 11;
+
+  // active batch — defaults to maxBatch on first load
+  const activeBatch = selectedBatch ?? maxBatch;
+  const isLatestBatch = activeBatch === maxBatch;
+
+  // derive filtered slots for the selected batch
+  const subscriberSlots = allSubscriberSlots.filter((s) => s.batch === activeBatch);
+  const stampedSlots    = subscriberSlots.filter((s) => {
+    const v = s.stamped_status?.toUpperCase();
+    return v === "Y" || v === "STAMPED";
+  });
+  const stampedSlotNos  = stampedSlots.map((s) => s.slot_no);
+  const stampedCount    = stampedSlots.length;
+  const logEntries      = [...stampedSlots]
+    .filter((s) => s.stamped_date)
+    .sort((a, b) => new Date(b.stamped_date!).getTime() - new Date(a.stamped_date!).getTime());
+
+  const allStamped  = stampedCount >= totalSlots;
+  const progressPct = totalSlots > 0 ? Math.round((stampedCount / totalSlots) * 100) : 0;
 
   // slots where is_redeem_item = 'Y'
   const redeemableSlotNos = subscriberSlots
@@ -321,6 +344,22 @@ const StampCardDetail: React.FC = () => {
       perk_description: entry.perk_description,
       reward_value_text: entry.reward_value_text,
     });
+  };
+
+  const handleResetCard = async () => {
+    if (!stampcardId) return;
+    try {
+      const result = await resetCard.mutateAsync({
+        stampcardId,
+        customerAuthUserId,
+        subscriberAccno: data.subscriberAccno,
+        membershipId: memberId ?? "",
+        programId: programId ?? "",
+      });
+      toast.success(`Card reset! Batch #${result.newBatch} started.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to reset card. Please try again.");
+    }
   };
 
   const handleStampNow = async () => {
@@ -365,6 +404,12 @@ const StampCardDetail: React.FC = () => {
           slotNo={cancelTarget?.slotNo}
           onConfirm={() => cancelTarget && cancelStamp.mutate(cancelTarget.id)}
           onClose={() => setCancelTarget(null)}
+        />
+        <ConfirmDialog
+          open={showResetConfirm}
+          variant="reset"
+          onConfirm={handleResetCard}
+          onClose={() => setShowResetConfirm(false)}
         />
 
         {/* Breadcrumb */}
@@ -432,8 +477,8 @@ const StampCardDetail: React.FC = () => {
           {/* ── Column 2: Stamp Now Button ── */}
           <div className="xl:flex-none flex xl:flex-col items-center justify-center xl:pt-16 gap-4 xl:gap-6 xl:px-4">
             <button
-              onClick={() => !allStamped && !stamping && setShowStampConfirm(true)}
-              disabled={allStamped || stamping}
+              onClick={() => !allStamped && !stamping && isLatestBatch && setShowStampConfirm(true)}
+              disabled={allStamped || stamping || !isLatestBatch}
               className={`
                 relative group h-36 w-36 xl:h-44 xl:w-44 rounded-full
                 transition-all duration-200 flex flex-col items-center justify-center gap-1 active:scale-95
@@ -466,6 +511,26 @@ const StampCardDetail: React.FC = () => {
             <p className="text-[11px] text-gray-400 text-center max-w-[140px]">
               {allStamped ? "All slots completed" : "Tap to issue a stamp to this member"}
             </p>
+
+            {/* Reset Card button — only visible when all slots completed on latest batch */}
+            {allStamped && isLatestBatch && (
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                disabled={resetCard.isPending}
+                className="
+                  flex items-center gap-2 px-5 py-2.5 rounded-full
+                  bg-gradient-to-r from-amber-500 to-orange-500
+                  hover:from-amber-400 hover:to-orange-400
+                  text-white text-sm font-bold
+                  shadow-lg shadow-orange-200
+                  transition-all duration-200 active:scale-95
+                  disabled:opacity-60 disabled:cursor-not-allowed
+                "
+              >
+                <RotateCcw className={`h-4 w-4 ${resetCard.isPending ? "animate-spin" : ""}`} />
+                {resetCard.isPending ? "Resetting…" : "Reset Card"}
+              </button>
+            )}
           </div>
 
           {/* ── Column 3: Log Transaction ── */}
@@ -476,21 +541,43 @@ const StampCardDetail: React.FC = () => {
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               {/* header */}
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/60">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-xl bg-fuchsia-50 flex items-center justify-center">
-                    <Clock className="h-4.5 w-4.5 text-fuchsia-500" />
+              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-fuchsia-50 flex items-center justify-center">
+                      <Clock className="h-4.5 w-4.5 text-fuchsia-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Transaction History</p>
+                      <p className="text-[11px] text-gray-400">
+                        {logEntries.length} stamp{logEntries.length !== 1 ? "s" : ""} recorded
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Transaction History</p>
-                    <p className="text-[11px] text-gray-400">
-                      {logEntries.length} stamp{logEntries.length !== 1 ? "s" : ""} recorded
-                    </p>
-                  </div>
+                  <span className="bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-100 text-xs font-bold px-3 py-1 rounded-full">
+                    {stampedCount}/{totalSlots}
+                  </span>
                 </div>
-                <span className="bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-100 text-xs font-bold px-3 py-1 rounded-full">
-                  {stampedCount}/{totalSlots}
-                </span>
+
+                {/* Batch filter — only show if more than 1 batch */}
+                {availableBatches.length > 1 && (
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <span className="text-[11px] text-gray-400 font-medium">Batch:</span>
+                    {availableBatches.map((b) => (
+                      <button
+                        key={b}
+                        onClick={() => setSelectedBatch(b)}
+                        className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                          activeBatch === b
+                            ? "bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm"
+                            : "bg-white text-gray-500 border-gray-200 hover:border-fuchsia-300 hover:text-fuchsia-600"
+                        }`}
+                      >
+                        #{b}{b === maxBatch ? " (Current)" : ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* list */}
